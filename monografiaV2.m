@@ -8,9 +8,10 @@
 % En los trabajos usados como referencia se sugiere trabajar con 2 capas
 % ocultas y un buffer_size de 40-60 muestras.
 
-%% Aplicar ventana triangular a cada frame.
+% https://hackernoon.com/understanding-architecture-of-lstm-cell-from-scratch-with-code-8da40f0b71f4
 %  randomizar la seleccion de frames en el aprendizaje.
-% Probar con un ecm maximo en el orden de 0.02
+% Probar con un ecm maximo en el orden de 0.0012
+% 2hs de entrenamiento
 %%
 
 clear all,close all,clc
@@ -18,12 +19,18 @@ clear all,close all,clc
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%% Levanto los datos para entrenar la red %%%%%%%%%%%%%%
 %[audio_in Fs] = audioread('..\NeuralAudio\tracks_guitar\net_out_audio.wav');
-[audio_in Fs] = audioread('..\NeuralAudio\tracks_guitar\clean_riff.wav');
-[audio_out Fs] = audioread('..\NeuralAudio\tracks_guitar\distorted_riff.wav');
+[audio_in Fs] = audioread('acordes_clean_abiertos.wav');
+[audio_out Fs] = audioread('acordes_crunch.wav');
+
+audio_in = audio_in(:,1);
+audio_out = audio_out(:,1);
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%audio_in = audio_in(44000:end);
+data_set_in = gpuArray(audio_in);
+data_set_out = gpuArray(audio_out);
 
+%audio_in = audio_in(44000:end);
 %audio_out = audio_out(44000:end);
 
 %%%%%%%%%%%%%%%%%%%%%% Imprimo los datos %%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -52,13 +59,17 @@ W_out = randn(PERCEPTRONS_OUTPUT_LAYER,PERCEPTRONS_HIDDEN_LAYER + 1);
 
 net_output = zeros(SAMPLES,1);
 
+W_in = gpuArray(W_in);
+W_out = gpuArray(W_out);
+net_output = gpuArray(net_output);
+
 %%%%%%%%%%%%%%% Parametros del aprendizaje (Backpropagation) %%%%%%%%%%%%%
 
 beta = 0.09;
 n = 0.05;
-ECM = 0.005;
+ECM = 0.001;
 
-FRAMES_QTY = 200;
+FRAMES_QTY = 400;
 
 %uso ventana rectangular para separar los frames
 
@@ -66,7 +77,7 @@ CHOP_SIZE = SAMPLES;
 
 ecm = 1;
 
-load Win_Wout.mat
+%load Win_Wout.mat
 
 while (ecm >= ECM)
     
@@ -76,8 +87,10 @@ while (ecm >= ECM)
     for i=1:FRAMES_QTY
 
         data_set_in = audio_in(INIT_FRAME:END_FRAME)';
+       
         %data_set_in = data_set_in.*window;
         data_set_out = audio_out(INIT_FRAME:END_FRAME)';
+      
         %data_set_out = data_set_out.*window;
 
         INIT_FRAME = INIT_FRAME + CHOP_SIZE;
@@ -99,10 +112,17 @@ while (ecm >= ECM)
         INIT_FRAME = INIT_FRAME + CHOP_SIZE;
         END_FRAME = END_FRAME + CHOP_SIZE;
     end
-            
+    
+    net_output = gather(net_output);
+    
     ecm = immse(audio_out(1:length(net_output)),net_output)
     
+    net_output = gpuArray(net_output);
 end
+
+W_in = gather(W_in);
+W_out = gather(W_out);
+net_output = gather(net_output);
 
 d = fdesign.lowpass('N,Fc',6,4e3,48000);
 Hd = design(d);

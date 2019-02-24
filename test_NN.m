@@ -1,13 +1,14 @@
 clear all,close all;
 
 load workspace.mat;
-%[audio_in Fs] = audioread('..\NeuralAudio\tracks_guitar\clean_riff.wav');
+[audio_in Fs] = audioread('acordes_clean.wav');
 
-[audio_in Fs] = audioread('..\NeuralAudio\tracks_guitar\net_out_audio.wav');
-[audio_out Fs] = audioread('..\NeuralAudio\tracks_guitar\distorted_riff.wav');
+[audio_out Fs] = audioread('acordes_distor.wav');
+
+ audio_in = audio_in(1.71e5:6.69e5,1);
+ audio_out = audio_out(1.71e5:6.69e5,1);
 
 
-%SAMPLES = 100;
 INIT_FRAME = 1;
 END_FRAME = SAMPLES;
 CHOP_SIZE = SAMPLES;
@@ -50,11 +51,7 @@ INIT_FRAME = 1;
 END_FRAME = SAMPLES;
 CHOP_SIZE = SAMPLES;
 
-for i = 1:5
-    large_output(INIT_FRAME:END_FRAME) = net_output(1:20000);
-    INIT_FRAME = INIT_FRAME + CHOP_SIZE;
-    END_FRAME = END_FRAME + CHOP_SIZE;
-end
+
 sound(large_output,Fs)
 return
 play(nnAudio)
